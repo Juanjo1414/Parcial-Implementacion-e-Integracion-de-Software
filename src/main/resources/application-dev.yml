@@ -3,7 +3,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/camelracing_db
     username: postgres
-    password: tu_password_local
+    password: juanjose1414
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
