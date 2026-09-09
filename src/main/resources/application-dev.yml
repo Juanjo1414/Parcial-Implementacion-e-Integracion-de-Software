@@ -1,0 +1,15 @@
+# Perfil "dev": Postgres corriendo en tu propia máquina (localhost)
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/camelracing_db
+    username: postgres
+    password: tu_password_local
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update   # actualiza las tablas automáticamente mientras se realiza el desarrollo
+    show-sql: true
+
+logging:
+  level:
+    org.hibernate.SQL: debug
