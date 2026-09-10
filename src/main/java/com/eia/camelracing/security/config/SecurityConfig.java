@@ -2,6 +2,7 @@ package com.eia.camelracing.security.config;
 
 import com.eia.camelracing.security.jwt.JwtAuthenticationFilter;
 import com.eia.camelracing.security.service.CustomUserDetailsService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,15 +17,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Configuración DEFINITIVA de seguridad. Reemplaza por completo la clase
- * temporal de la Etapa 0 (bórrala o sobrescríbela).
- *
- * @EnableMethodSecurity activa las anotaciones @PreAuthorize que vamos a
- * poner directamente en cada controller — así cada endpoint declara su
- * propio requisito de rol, en vez de tener una lista gigante de reglas
- * centralizadas y difíciles de mantener aquí.
- */
 @Configuration
 @EnableMethodSecurity
 @RequiredArgsConstructor
@@ -35,8 +27,6 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // BCrypt: exactamente lo que pide la guía ("BCrypt or another secure
-        // password-hashing algorithm"). Nunca se guarda la contraseña en texto plano.
         return new BCryptPasswordEncoder();
     }
 
@@ -45,7 +35,6 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // AHORA: el UserDetailsService se pasa directo al constructor.
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
@@ -56,19 +45,27 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // API stateless con JSON, no aplica
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
-                        // STATELESS: el servidor NO guarda sesiones. Cada request
-                        // se autentica desde cero con su propio token JWT.
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // NUEVO: sin esto, Spring Security decide por su cuenta qué hacer
+                // cuando alguien no autenticado pide un recurso protegido, y ese
+                // comportamiento por defecto puede devolver 403 en vez de 401.
+                // Aquí lo dejamos explícito: sin token válido -> siempre 401,
+                // con el mismo formato JSON que usa el resto de la API.
+                .exceptionHandling(exceptionHandling -> exceptionHandling
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write(
+                                    "{\"message\":\"Debes autenticarte para acceder a este recurso\",\"status\":401}");
+                        })
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // login/registro son públicos
-                        .anyRequest().authenticated() // todo lo demás exige un token válido
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                // Nuestro filtro se ejecuta ANTES del filtro estándar de Spring,
-                // para que el usuario ya quede autenticado cuando Spring evalúe
-                // las reglas de arriba.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -2,6 +2,8 @@ package com.eia.camelracing.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -14,7 +16,6 @@ import java.util.NoSuchElementException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 400: los datos enviados no pasan las validaciones (@NotBlank, @Positive, etc.)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new LinkedHashMap<>();
@@ -28,33 +29,44 @@ public class GlobalExceptionHandler {
                 errors));
     }
 
-    // 404: buscaste algo por id y no existe.
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NoSuchElementException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(
                 ex.getMessage(), HttpStatus.NOT_FOUND.value(), LocalDateTime.now()));
     }
 
-    // 409: conflicto de reglas de negocio, ej. nickname duplicado.
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleConflict(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(
                 ex.getMessage(), HttpStatus.CONFLICT.value(), LocalDateTime.now()));
     }
 
-    // Red de seguridad: cualquier otro error inesperado NO debe mostrar el
-    // stack trace al usuario (la guía lo prohíbe explícitamente).
+    // 401: credenciales incorrectas al hacer login (usuario/contraseña inválidos).
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthError(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(
+                "Usuario o contraseña incorrectos", HttpStatus.UNAUTHORIZED.value(), LocalDateTime.now()));
+    }
+
+    // 403: el usuario SÍ está autenticado, pero su rol no tiene permiso para
+    // esta acción (esto es justo lo que lanza @PreAuthorize al rechazar).
+    // Al declararlo aquí, de forma más específica que el Exception.class de
+    // abajo, Spring Boot elige ESTE manejador en vez del genérico -> evita
+    // que un 403 real termine devuelto como 500.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(
+                "No tienes permisos para realizar esta acción",
+                HttpStatus.FORBIDDEN.value(), LocalDateTime.now()));
+    }
+
+    // Red de seguridad final: cualquier otro error inesperado NO debe
+    // mostrar el stack trace al usuario.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse(
                 "Ocurrió un error inesperado en el servidor",
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 LocalDateTime.now()));
-    }
-
-    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
-    public ResponseEntity<ErrorResponse> handleAuthError(org.springframework.security.core.AuthenticationException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(
-                "Usuario o contraseña incorrectos", HttpStatus.UNAUTHORIZED.value(), LocalDateTime.now()));
     }
 }
