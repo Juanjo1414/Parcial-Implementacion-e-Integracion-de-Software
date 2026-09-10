@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,7 +20,9 @@ public class TeamController {
 
     private final TeamService service;
 
+    // Igual que Competitor: gestionar equipos es tarea exclusiva de ADMIN.
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TeamResponse> create(@Valid @RequestBody TeamRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
@@ -35,23 +38,27 @@ public class TeamController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TeamResponse> update(@PathVariable UUID id, @Valid @RequestBody TeamRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{teamId}/members/{competitorId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TeamResponse> addMember(
             @PathVariable UUID teamId, @PathVariable UUID competitorId) {
         return ResponseEntity.ok(service.addMember(teamId, competitorId));
     }
 
     @DeleteMapping("/{teamId}/members/{competitorId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TeamResponse> removeMember(
             @PathVariable UUID teamId, @PathVariable UUID competitorId) {
         return ResponseEntity.ok(service.removeMember(teamId, competitorId));

@@ -1,5 +1,6 @@
 package com.eia.camelracing.registration.service;
 
+import com.eia.camelracing.common.audit.AuditPublisher;
 import com.eia.camelracing.competitor.entity.Competitor;
 import com.eia.camelracing.competitor.entity.CompetitorStatus;
 import com.eia.camelracing.competitor.repository.ICompetitorRepository;
@@ -17,6 +18,7 @@ import com.eia.camelracing.team.entity.Team;
 import com.eia.camelracing.team.entity.TeamStatus;
 import com.eia.camelracing.team.repository.ITeamRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +35,14 @@ public class RegistrationService {
     private final IRaceRepository raceRepository;
     private final ICompetitorRepository competitorRepository;
     private final ITeamRepository teamRepository;
+    // Agregado en la Etapa 7.
+    private final AuditPublisher auditPublisher;
 
     @Transactional
     public RegistrationResponse register(UUID raceId, RegistrationRequest request) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new NoSuchElementException("Carrera " + raceId + " no encontrada"));
 
-        // Regla: "Registration is allowed only while the race is open and
-        // before the deadline."
         if (race.getStatus() != RaceStatus.OPEN_FOR_REGISTRATION) {
             throw new IllegalStateException(
                     "La carrera no está abierta para inscripciones (estado actual: " + race.getStatus() + ")");
@@ -49,10 +51,9 @@ public class RegistrationService {
             throw new IllegalStateException("La fecha límite de inscripción ya pasó");
         }
 
-        // XOR: exactamente uno de los dos debe venir.
         boolean hasCompetitor = request.competitorId() != null;
         boolean hasTeam = request.teamId() != null;
-        if (hasCompetitor == hasTeam) { // true==true o false==false -> ambos o ninguno
+        if (hasCompetitor == hasTeam) {
             throw new IllegalStateException("Debes indicar exactamente un competitor o un team, no ambos ni ninguno");
         }
 
@@ -61,12 +62,17 @@ public class RegistrationService {
                 : registerTeam(race, request);
 
         registration.setStartingPosition(resolveStartingPosition(race.getId(), request.startingPosition()));
+        registration.setPerformedBy(currentUsername());
 
-        return RegistrationMapper.toResponse(registrationRepository.save(registration));
+        RaceRegistration saved = registrationRepository.save(registration);
+
+        auditPublisher.publish("CREATE", "RaceRegistration", saved.getId().toString(),
+                "Inscripción registrada en la carrera " + race.getName());
+
+        return RegistrationMapper.toResponse(saved);
     }
 
     private RaceRegistration registerCompetitor(Race race, RegistrationRequest request) {
-        // Regla: "Registration type must match race type."
         if (race.getType() == RaceType.TEAM) {
             throw new IllegalStateException("Esta carrera es solo de equipos, no admite competidores individuales");
         }
@@ -74,18 +80,14 @@ public class RegistrationService {
         Competitor competitor = competitorRepository.findById(request.competitorId())
                 .orElseThrow(() -> new NoSuchElementException("Competidor " + request.competitorId() + " no encontrado"));
 
-        // Regla: "All individual competitors ... must be eligible."
         if (competitor.getStatus() != CompetitorStatus.ACTIVE) {
             throw new IllegalStateException("El competidor '" + competitor.getNickname() + "' no está ACTIVO");
         }
 
-        // Regla: "A competitor or team cannot be registered twice in the same race."
         if (registrationRepository.existsByRaceIdAndCompetitorId(race.getId(), competitor.getId())) {
             throw new IllegalStateException("El competidor ya está inscrito en esta carrera");
         }
 
-        // Regla: "A participant cannot compete simultaneously as an individual
-        // and as a team member in the same race."
         if (competitor.getTeam() != null
                 && registrationRepository.existsByRaceIdAndTeamId(race.getId(), competitor.getTeam().getId())) {
             throw new IllegalStateException(
@@ -95,12 +97,10 @@ public class RegistrationService {
         return RaceRegistration.builder()
                 .race(race)
                 .competitor(competitor)
-                .performedBy("sistema") // se reemplaza en Etapa 6
                 .build();
     }
 
     private RaceRegistration registerTeam(Race race, RegistrationRequest request) {
-        // Regla: "Registration type must match race type."
         if (race.getType() == RaceType.INDIVIDUAL) {
             throw new IllegalStateException("Esta carrera es solo individual, no admite equipos");
         }
@@ -108,12 +108,9 @@ public class RegistrationService {
         Team team = teamRepository.findById(request.teamId())
                 .orElseThrow(() -> new NoSuchElementException("Equipo " + request.teamId() + " no encontrado"));
 
-        // Regla (heredada del módulo Team): "A suspended team cannot enter a race."
         if (team.getStatus() != TeamStatus.ACTIVE) {
             throw new IllegalStateException("El equipo '" + team.getName() + "' no está activo");
         }
-        // Regla (heredada del módulo Team): "A team must contain at least one
-        // competitor before entering a race."
         if (team.getMembers().isEmpty()) {
             throw new IllegalStateException("El equipo no tiene miembros, no puede inscribirse");
         }
@@ -122,9 +119,6 @@ public class RegistrationService {
             throw new IllegalStateException("El equipo ya está inscrito en esta carrera");
         }
 
-        // Regla: "A participant cannot compete simultaneously as an individual
-        // and as a team member in the same race." (chequeo inverso al de arriba:
-        // ninguno de los miembros del equipo debe estar ya inscrito individualmente)
         boolean anyMemberAlreadyIndividual = team.getMembers().stream()
                 .anyMatch(member -> registrationRepository.existsByRaceIdAndCompetitorId(race.getId(), member.getId()));
         if (anyMemberAlreadyIndividual) {
@@ -138,9 +132,6 @@ public class RegistrationService {
                 .build();
     }
 
-    // Regla: "Starting positions cannot be duplicated."
-    // Si el cliente no especifica una posición, se asigna la siguiente
-    // disponible automáticamente (1, 2, 3...).
     private Integer resolveStartingPosition(UUID raceId, Integer requested) {
         if (requested == null) {
             long count = registrationRepository.findByRaceId(raceId).size();
@@ -170,12 +161,15 @@ public class RegistrationService {
             throw new IllegalStateException("Solo se pueden aprobar inscripciones en estado PENDING");
         }
         registration.setStatus(RegistrationStatus.APPROVED);
-        return RegistrationMapper.toResponse(registrationRepository.save(registration));
+        RaceRegistration saved = registrationRepository.save(registration);
+
+        auditPublisher.publish("APPROVE", "RaceRegistration", id.toString(), "Inscripción aprobada");
+
+        return RegistrationMapper.toResponse(saved);
     }
 
     @Transactional
     public RegistrationResponse reject(UUID id, String reason) {
-        // Regla: "Rejected registrations must include a clear reason."
         if (reason == null || reason.isBlank()) {
             throw new IllegalStateException("Debes indicar un motivo de rechazo");
         }
@@ -185,17 +179,28 @@ public class RegistrationService {
         }
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setValidationNotes(reason);
-        return RegistrationMapper.toResponse(registrationRepository.save(registration));
+        RaceRegistration saved = registrationRepository.save(registration);
+
+        auditPublisher.publish("REJECT", "RaceRegistration", id.toString(), "Inscripción rechazada: " + reason);
+
+        return RegistrationMapper.toResponse(saved);
     }
 
     @Transactional
     public void cancel(UUID id) {
         RaceRegistration registration = getOrThrow(id);
         registrationRepository.delete(registration);
+
+        auditPublisher.publish("CANCEL", "RaceRegistration", id.toString(), "Inscripción cancelada");
     }
 
     private RaceRegistration getOrThrow(UUID id) {
         return registrationRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Inscripción " + id + " no encontrada"));
+    }
+
+    private String currentUsername() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? auth.getName() : "sistema";
     }
 }

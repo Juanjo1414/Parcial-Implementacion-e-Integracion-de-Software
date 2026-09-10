@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,7 +21,10 @@ public class RaceController {
 
     private final RaceService service;
 
+    // Diferencia clave con Competitor/Team: aquí ADMIN y ORGANIZER pueden
+    // gestionar ("Race Organizer: Manage races, registrations and results").
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZER')")
     public ResponseEntity<RaceResponse> create(@Valid @RequestBody RaceRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
@@ -36,17 +40,20 @@ public class RaceController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZER')")
     public ResponseEntity<RaceResponse> update(@PathVariable UUID id, @Valid @RequestBody RaceRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZER')")
     public ResponseEntity<RaceResponse> changeStatus(
             @PathVariable UUID id, @RequestParam RaceStatus status) {
         return ResponseEntity.ok(service.changeStatus(id, status));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZER')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

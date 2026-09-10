@@ -13,3 +13,7 @@ spring:
 logging:
   level:
     org.hibernate.SQL: debug
+
+jwt:
+  secret: "una-clave-secreta-larga-de-al-menos-32-caracteres-para-firmar-tokens"
+  expiration-ms: 3600000   # 1 hora, en milisegundos

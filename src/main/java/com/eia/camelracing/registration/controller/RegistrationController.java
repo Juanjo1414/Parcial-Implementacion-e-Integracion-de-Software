@@ -7,6 +7,7 @@ import com.eia.camelracing.registration.service.RegistrationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class RegistrationController {
     private final RegistrationService service;
 
     @PostMapping("/api/races/{raceId}/registrations")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZER')")
     public ResponseEntity<RegistrationResponse> register(
             @PathVariable UUID raceId, @RequestBody RegistrationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.register(raceId, request));
@@ -35,17 +37,20 @@ public class RegistrationController {
     }
 
     @PatchMapping("/api/registrations/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZER')")
     public ResponseEntity<RegistrationResponse> approve(@PathVariable UUID id) {
         return ResponseEntity.ok(service.approve(id));
     }
 
     @PatchMapping("/api/registrations/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZER')")
     public ResponseEntity<RegistrationResponse> reject(
             @PathVariable UUID id, @RequestBody RejectRequest request) {
         return ResponseEntity.ok(service.reject(id, request.reason()));
     }
 
     @DeleteMapping("/api/registrations/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZER')")
     public ResponseEntity<Void> cancel(@PathVariable UUID id) {
         service.cancel(id);
         return ResponseEntity.noContent().build();

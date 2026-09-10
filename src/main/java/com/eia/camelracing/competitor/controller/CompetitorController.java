@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -22,13 +23,16 @@ public class CompetitorController {
 
     private final CompetitorService service;
 
+    // Escritura: solo ADMIN puede gestionar competidores (tabla de roles, Módulo 1).
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CompetitorResponse> create(@Valid @RequestBody CompetitorRequest request) {
         CompetitorResponse created = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    // Ejemplo real: GET /api/competitors?name=byte&type=CAMEL&page=0&size=10&sort=name,asc
+    // Lectura: sin @PreAuthorize -> cualquier usuario autenticado (ADMIN,
+    // ORGANIZER o VIEWER) puede consultar, tal como dice la guía.
     @GetMapping
     public ResponseEntity<Page<CompetitorResponse>> findAll(
             @RequestParam(required = false) String name,
@@ -44,20 +48,23 @@ public class CompetitorController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CompetitorResponse> update(
             @PathVariable UUID id, @Valid @RequestBody CompetitorRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CompetitorResponse> changeStatus(
             @PathVariable UUID id, @RequestParam CompetitorStatus status) {
         return ResponseEntity.ok(service.changeStatus(id, status));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
-        return ResponseEntity.noContent().build(); // 204, como pide la guía
+        return ResponseEntity.noContent().build();
     }
 }

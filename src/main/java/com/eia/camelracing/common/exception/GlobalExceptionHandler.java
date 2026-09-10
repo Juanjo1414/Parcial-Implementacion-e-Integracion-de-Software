@@ -51,4 +51,10 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 LocalDateTime.now()));
     }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthError(org.springframework.security.core.AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(
+                "Usuario o contraseña incorrectos", HttpStatus.UNAUTHORIZED.value(), LocalDateTime.now()));
+    }
 }

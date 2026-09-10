@@ -2,6 +2,7 @@ package com.eia.camelracing.team.service;
 
 import com.eia.camelracing.competitor.entity.Competitor;
 import com.eia.camelracing.competitor.repository.ICompetitorRepository;
+import com.eia.camelracing.result.repository.IRaceResultRepository;
 import com.eia.camelracing.team.dto.TeamRequest;
 import com.eia.camelracing.team.dto.TeamResponse;
 import com.eia.camelracing.team.entity.Team;
@@ -60,13 +61,18 @@ public class TeamService {
         return TeamMapper.toResponse(teamRepository.save(existing));
     }
 
+    private final IRaceResultRepository resultRepository;
+
     @Transactional
     public void delete(UUID id) {
         Team existing = getOrThrow(id);
-        // Regla: "A team with official race history cannot be deleted; it
-        // must be deactivated." Todavía no existe el módulo Race (Etapa 3),
-        // así que por ahora solo dejamos el borrado físico si no tiene miembros;
-        // retomamos esta regla completa cuando exista Race/Registration.
+
+        if (resultRepository.existsByRegistration_Team_Id(id)) {
+            throw new IllegalStateException(
+                    "Este equipo tiene resultados oficiales registrados; no se puede eliminar. "
+                            + "Debe desactivarse en su lugar");
+        }
+
         teamRepository.delete(existing);
     }
 
@@ -90,7 +96,7 @@ public class TeamService {
             throw new IllegalStateException("El equipo ya alcanzó el máximo de " + MAX_MEMBERS + " miembros");
         }
 
-        // Un solo método que sincroniza ambos lados -> ya no hace falta
+        // Un solo metodo que sincroniza ambos lados -> ya no hace falta
         // volver a consultar la BD, la respuesta se arma con el objeto en memoria.
         team.addMember(competitor);
         competitorRepository.save(competitor);
