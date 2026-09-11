@@ -13,7 +13,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-@RestControllerAdvice
+// AHORA: "annotations = RestController.class" limita este manejador para
+// que SOLO aplique a clases anotadas @RestController (la API), dejando
+// que los @Controller de las vistas Thymeleaf sigan su propio camino.
+@RestControllerAdvice(annotations = org.springframework.web.bind.annotation.RestController.class)
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

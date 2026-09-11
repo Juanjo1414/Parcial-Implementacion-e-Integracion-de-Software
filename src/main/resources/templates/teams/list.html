@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/head :: common-head('Equipos')"></head>
+<body>
+<div th:replace="fragments/layout :: nav"></div>
+<main class="container">
+    <div class="alert alert-success alert-dismissible fade show" th:if="${successMessage}">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div class="alert alert-danger alert-dismissible fade show" th:if="${errorMessage}">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Equipos</h1>
+        <a sec:authorize="hasRole('ADMIN')" th:href="@{/teams/new}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Nuevo equipo
+        </a>
+    </div>
+
+    <p class="empty-state" th:if="${teams.isEmpty()}">
+        <i class="bi bi-flag fs-2 d-block mb-2"></i> No hay equipos registrados.
+    </p>
+
+    <div class="row g-3">
+        <div class="col-md-4" th:each="t : ${teams}">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title" th:text="${t.name}">Nombre</h5>
+                    <p class="text-muted small" th:text="${t.coachName}">Coach</p>
+                    <span class="badge badge-status"
+                          th:classappend="${t.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-secondary'"
+                          th:text="${t.status}">estado</span>
+                    <p class="mt-2 mb-0">
+                        <i class="bi bi-people"></i> <span th:text="${t.members.size()}">0</span> miembros
+                        &nbsp;|&nbsp; V: <span th:text="${t.wins}">0</span> D: <span th:text="${t.losses}">0</span>
+                    </p>
+                </div>
+                <div class="card-footer bg-white">
+                    <a th:href="@{/teams/{id}(id=${t.id})}" class="btn btn-sm btn-outline-primary w-100">Ver detalle</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

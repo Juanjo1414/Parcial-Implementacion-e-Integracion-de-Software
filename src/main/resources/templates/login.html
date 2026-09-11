@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/head :: common-head('Iniciar sesión')"></head>
+<body class="bg-light">
+<div class="container">
+    <div class="card login-card shadow">
+        <div class="card-body p-4">
+            <h1 class="h3 mb-3 text-center">🐫 Camel Racing</h1>
+            <p class="text-muted text-center mb-4">Sistema de gestión de carreras</p>
+
+            <div class="alert alert-danger" th:if="${param.error}">
+                Usuario o contraseña incorrectos.
+            </div>
+            <div class="alert alert-success" th:if="${param.logout}">
+                Sesión cerrada correctamente.
+            </div>
+
+            <form th:action="@{/login}" method="post">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Usuario</label>
+                    <input id="username" name="username" type="text" class="form-control" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Contraseña</label>
+                    <input id="password" name="password" type="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
