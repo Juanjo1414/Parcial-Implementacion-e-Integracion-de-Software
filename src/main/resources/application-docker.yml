@@ -1,0 +1,20 @@
+# Perfil "docker": todos los valores sensibles vienen de variables de
+# entorno (inyectadas por compose.yml desde el archivo .env), nunca
+# hardcodeados aquí. Así el mismo código sirve para cualquier entorno.
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false   # en producción/docker no queremos el ruido de SQL en logs
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION}
+
+server:
+  port: ${SERVER_PORT:8080}

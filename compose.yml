@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: camelracing-db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"   # opcional: solo para que puedas conectarte con pgAdmin desde tu máquina
+    volumes:
+      # Volumen NOMBRADO (no un bind mount a una carpeta): los datos
+      # persisten aunque borres y recrees el contenedor, tal como pide
+      # la guía ("Persistent named Docker volume").
+      - camelracing_pgdata:/var/lib/postgresql/data
+    networks:
+      - camelracing_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: camelracing-app
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: db   # nombre del servicio de arriba, no "localhost"
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      SERVER_PORT: ${SERVER_PORT}
+    ports:
+      - "${SERVER_PORT}:8080"
+    depends_on:
+      db:
+        # Espera a que Postgres esté REALMENTE listo (healthcheck en verde),
+        # no solo a que el contenedor haya arrancado -> evita que la app
+        # intente conectarse antes de que la base de datos acepte conexiones.
+        condition: service_healthy
+    networks:
+      - camelracing_network
+
+networks:
+  camelracing_network:
+    driver: bridge
+
+volumes:
+  camelracing_pgdata:
