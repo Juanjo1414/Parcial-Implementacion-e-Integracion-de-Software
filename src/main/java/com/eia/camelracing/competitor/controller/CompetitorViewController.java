@@ -45,6 +45,19 @@ public class CompetitorViewController {
         return "competitors/list";
     }
 
+    // NUEVO: vista de detalle de solo lectura, accesible a cualquier rol
+    // autenticado (a diferencia de "editForm", que es solo para ADMIN).
+    @GetMapping("/{id}")
+    public String detail(@PathVariable UUID id, Model model, HttpServletResponse response) {
+        try {
+            model.addAttribute("competitor", service.findById(id));
+        } catch (NoSuchElementException ex) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return "error/404";
+        }
+        return "competitors/detail";
+    }
+
     @GetMapping("/new")
     @PreAuthorize("hasRole('ADMIN')")
     public String newForm(Model model) {
@@ -54,9 +67,6 @@ public class CompetitorViewController {
         return "competitors/form";
     }
 
-    // CORREGIDO: ahora captura NoSuchElementException si el id no existe
-    // (por ejemplo, alguien escribe una URL con un id inventado o ya
-    // borrado) y muestra la página 404 en vez de romper con un error 500.
     @GetMapping("/{id}/edit")
     @PreAuthorize("hasRole('ADMIN')")
     public String editForm(@PathVariable UUID id, Model model, HttpServletResponse response) {

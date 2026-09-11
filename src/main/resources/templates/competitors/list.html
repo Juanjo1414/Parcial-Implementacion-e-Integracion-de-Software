@@ -5,117 +5,111 @@
 <div th:replace="fragments/layout :: nav"></div>
 
 <main class="container">
-    <div class="alert alert-success alert-dismissible fade show" th:if="${successMessage}" role="alert">
-        <span th:text="${successMessage}"></span>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="alert alert-success alert-dismissible fade show" th:if="${successMessage}">
+        <span th:text="${successMessage}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
-    <div class="alert alert-danger alert-dismissible fade show" th:if="${errorMessage}" role="alert">
-        <span th:text="${errorMessage}"></span>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="alert alert-danger alert-dismissible fade show" th:if="${errorMessage}">
+        <span th:text="${errorMessage}"></span><button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <main class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>Competidores</h1>
-            <a sec:authorize="hasRole('ADMIN')" th:href="@{/competitors/new}" class="btn btn-primary">
-                <i class="bi bi-plus-lg"></i> Nuevo competidor
-            </a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Competidores</h1>
+        <a sec:authorize="hasRole('ADMIN')" th:href="@{/competitors/new}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Nuevo competidor
+        </a>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <form th:action="@{/competitors}" method="get" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Nombre</label>
+                    <input type="text" name="name" class="form-control" th:value="${filterName}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tipo</label>
+                    <select name="type" class="form-select">
+                        <option value="">Todos</option>
+                        <option th:each="t : ${types}" th:value="${t}" th:text="${t}"
+                                th:selected="${t == filterType}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos</option>
+                        <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"
+                                th:selected="${s == filterStatus}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <!-- Formulario de filtros: GET, así queda reflejado en la URL y es compartible -->
-        <div class="card mb-3">
-            <div class="card-body">
-                <form th:action="@{/competitors}" method="get" class="row g-2 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label">Nombre</label>
-                        <input type="text" name="name" class="form-control" th:value="${filterName}">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Tipo</label>
-                        <select name="type" class="form-select">
-                            <option value="">Todos</option>
-                            <option th:each="t : ${types}" th:value="${t}" th:text="${t}"
-                                    th:selected="${t == filterType}"></option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Estado</label>
-                        <select name="status" class="form-select">
-                            <option value="">Todos</option>
-                            <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"
-                                    th:selected="${s == filterStatus}"></option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-outline-secondary w-100">
-                            <i class="bi bi-search"></i> Buscar
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+    <div class="card">
+        <div class="card-body p-0">
+            <p class="empty-state mb-0" th:if="${competitorsPage.isEmpty()}">
+                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                No se encontraron competidores con esos filtros.
+            </p>
 
-        <div class="card">
-            <div class="card-body p-0">
-                <p class="empty-state mb-0" th:if="${competitorsPage.isEmpty()}">
-                    <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                    No se encontraron competidores con esos filtros.
-                </p>
-
-                <table class="table table-hover mb-0" th:unless="${competitorsPage.isEmpty()}">
-                    <thead class="table-light">
-                    <tr>
-                        <th>Nickname</th>
-                        <th>Nombre</th>
-                        <th>Tipo</th>
-                        <th>Estado</th>
-                        <th>V/D</th>
-                        <th class="text-end">Acciones</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="c : ${competitorsPage.content}">
-                        <td><strong th:text="${c.nickname}">nickname</strong></td>
-                        <td th:text="${c.name}">nombre</td>
-                        <td th:text="${c.type}">tipo</td>
-                        <td>
+            <table class="table table-hover mb-0" th:unless="${competitorsPage.isEmpty()}">
+                <thead class="table-light">
+                <tr>
+                    <th>Nickname</th><th>Nombre</th><th>Tipo</th>
+                    <th>Estado</th><th>V/D</th><th class="text-end">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="c : ${competitorsPage.content}">
+                    <!-- CORREGIDO: el nickname ahora es un link hacia la
+                         vista de detalle (antes era solo texto plano). -->
+                    <td>
+                        <a th:href="@{/competitors/{id}(id=${c.id})}" th:text="${c.nickname}"><strong>nickname</strong></a>
+                    </td>
+                    <td th:text="${c.name}">nombre</td>
+                    <td th:text="${c.type}">tipo</td>
+                    <td>
                             <span class="badge badge-status"
                                   th:classappend="${c.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-secondary'"
                                   th:text="${c.status}">estado</span>
-                        </td>
-                        <td th:text="${c.wins} + ' / ' + ${c.losses}">0 / 0</td>
-                        <td class="text-end" sec:authorize="hasRole('ADMIN')">
-                            <a th:href="@{/competitors/{id}/edit(id=${c.id})}" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <!-- Confirmación de destructivo, tal como pide la guía -->
-                            <form th:action="@{/competitors/{id}/delete(id=${c.id})}" method="post" class="d-inline"
-                                  onsubmit="return confirm('¿Eliminar a ' + '[[${c.nickname}]]' + '? Esta acción no se puede deshacer.');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Paginación simple -->
-            <div class="card-footer" th:if="${competitorsPage.totalPages > 1}">
-                <nav>
-                    <ul class="pagination mb-0 justify-content-center">
-                        <li class="page-item" th:each="i : ${#numbers.sequence(0, competitorsPage.totalPages - 1)}"
-                            th:classappend="${i == competitorsPage.number} ? 'active'">
-                            <a class="page-link"
-                               th:href="@{/competitors(page=${i}, name=${filterName}, type=${filterType}, status=${filterStatus})}"
-                               th:text="${i + 1}">1</a>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
+                    </td>
+                    <td th:text="${c.wins} + ' / ' + ${c.losses}">0 / 0</td>
+                    <td class="text-end" sec:authorize="hasRole('ADMIN')">
+                        <a th:href="@{/competitors/{id}/edit(id=${c.id})}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form th:action="@{/competitors/{id}/delete(id=${c.id})}" method="post" class="d-inline"
+                              onsubmit="return confirm('¿Eliminar a ' + '[[${c.nickname}]]' + '? Esta acción no se puede deshacer.');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
         </div>
-    </main>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+        <div class="card-footer" th:if="${competitorsPage.totalPages > 1}">
+            <nav>
+                <ul class="pagination mb-0 justify-content-center">
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, competitorsPage.totalPages - 1)}"
+                        th:classappend="${i == competitorsPage.number} ? 'active'">
+                        <a class="page-link"
+                           th:href="@{/competitors(page=${i}, name=${filterName}, type=${filterType}, status=${filterStatus})}"
+                           th:text="${i + 1}">1</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

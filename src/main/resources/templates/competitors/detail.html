@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/head :: common-head(${competitor.nickname})"></head>
+<body>
+<div th:replace="fragments/layout :: nav"></div>
+<main class="container" style="max-width: 700px;">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h1 th:text="${competitor.nickname}">nickname</h1>
+            <p class="text-muted" th:text="${competitor.name}">nombre completo</p>
+        </div>
+        <a sec:authorize="hasRole('ADMIN')" th:href="@{/competitors/{id}/edit(id=${competitor.id})}"
+           class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body row g-3">
+            <div class="col-md-4"><strong>Tipo:</strong><br th:text="${competitor.type}"></div>
+            <div class="col-md-4">
+                <strong>Estado:</strong><br>
+                <span class="badge badge-status"
+                      th:classappend="${competitor.status.name() == 'ACTIVE'} ? 'bg-success' : 'bg-secondary'"
+                      th:text="${competitor.status}">estado</span>
+            </div>
+            <div class="col-md-4"><strong>País de origen:</strong><br th:text="${competitor.originCountry} ?: '-'"></div>
+            <div class="col-md-4"><strong>Peso:</strong><br th:text="${competitor.weight} + ' kg'"></div>
+            <div class="col-md-4"><strong>Altura:</strong><br th:text="${competitor.height} + ' m'"></div>
+            <div class="col-md-4"><strong>Fecha de nacimiento:</strong><br th:text="${competitor.birthDate} ?: '-'"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Estadísticas</div>
+        <div class="card-body row text-center">
+            <div class="col-4">
+                <h3 th:text="${competitor.wins}">0</h3>
+                <p class="text-muted mb-0">Victorias</p>
+            </div>
+            <div class="col-4">
+                <h3 th:text="${competitor.losses}">0</h3>
+                <p class="text-muted mb-0">Derrotas</p>
+            </div>
+            <div class="col-4">
+                <h3 th:text="${competitor.racesCompleted}">0</h3>
+                <p class="text-muted mb-0">Carreras completadas</p>
+            </div>
+        </div>
+    </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

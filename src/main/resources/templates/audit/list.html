@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/head :: common-head('Auditoría')"></head>
+<body>
+<div th:replace="fragments/layout :: nav"></div>
+<main class="container">
+    <h1 class="mb-4"><i class="bi bi-shield-lock"></i> Registro de auditoría</h1>
+    <div class="card">
+        <div class="card-body p-0">
+            <p class="empty-state mb-0" th:if="${logsPage.isEmpty()}">No hay registros de auditoría todavía.</p>
+            <table class="table table-sm mb-0" th:unless="${logsPage.isEmpty()}">
+                <thead class="table-light">
+                <tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>Descripción</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="log : ${logsPage.content}">
+                    <td th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}">fecha</td>
+                    <td th:text="${log.username}">usuario</td>
+                    <td><span class="badge bg-dark" th:text="${log.action}">accion</span></td>
+                    <td th:text="${log.entityType}">entidad</td>
+                    <td th:text="${log.description}">descripción</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer" th:if="${logsPage.totalPages > 1}">
+            <nav>
+                <ul class="pagination mb-0 justify-content-center">
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, logsPage.totalPages - 1)}"
+                        th:classappend="${i == logsPage.number} ? 'active'">
+                        <a class="page-link" th:href="@{/audit(page=${i})}" th:text="${i + 1}">1</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,65 +1,71 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="fragments/head :: common-head('Nueva carrera')"></head>
+<head th:replace="fragments/head :: common-head(${isEdit} ? 'Editar carrera' : 'Nueva carrera')"></head>
 <body>
 <div th:replace="fragments/layout :: nav"></div>
 <main class="container" style="max-width: 650px;">
-    <h1 class="mb-4">Nueva carrera</h1>
+    <h1 class="mb-4" th:text="${isEdit} ? 'Editar carrera' : 'Nueva carrera'">Formulario</h1>
     <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
     <div class="card">
         <div class="card-body">
-            <form th:action="@{/races}" method="post">
+            <form th:action="@{${formAction}}" method="post">
                 <div class="mb-3">
                     <label class="form-label">Nombre</label>
-                    <input type="text" name="name" class="form-control" required>
+                    <input type="text" name="name" class="form-control" required
+                           th:value="${race?.name}">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Descripción</label>
-                    <textarea name="description" class="form-control" rows="2"></textarea>
+                    <textarea name="description" class="form-control" rows="2" th:text="${race?.description}"></textarea>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Fecha y hora de la carrera</label>
-                        <input type="datetime-local" name="scheduledAt" class="form-control" required>
+                        <input type="datetime-local" name="scheduledAt" class="form-control" required
+                               th:value="${race?.scheduledAt}">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Fecha límite de inscripción</label>
-                        <input type="datetime-local" name="registrationDeadline" class="form-control" required>
+                        <input type="datetime-local" name="registrationDeadline" class="form-control" required
+                               th:value="${race?.registrationDeadline}">
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Lugar de inicio</label>
-                        <input type="text" name="startLocation" class="form-control">
+                        <input type="text" name="startLocation" class="form-control" th:value="${race?.startLocation}">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Lugar de llegada</label>
-                        <input type="text" name="finishLocation" class="form-control">
+                        <input type="text" name="finishLocation" class="form-control" th:value="${race?.finishLocation}">
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Distancia (m)</label>
-                        <input type="number" step="0.1" name="distanceMeters" class="form-control" required>
+                        <input type="number" step="0.1" name="distanceMeters" class="form-control" required
+                               th:value="${race?.distanceMeters}">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Máx. participantes</label>
-                        <input type="number" name="maxParticipants" class="form-control" required min="2">
+                        <input type="number" name="maxParticipants" class="form-control" required min="2"
+                               th:value="${race?.maxParticipants}">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Tipo</label>
                         <select name="type" class="form-select" required>
-                            <option th:each="t : ${types}" th:value="${t}" th:text="${t}"></option>
+                            <option th:each="t : ${types}" th:value="${t}" th:text="${t}"
+                                    th:selected="${race != null and race.type == t}"></option>
                         </select>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Organizador</label>
-                    <input type="text" name="organizerName" class="form-control">
+                    <input type="text" name="organizerName" class="form-control" th:value="${race?.organizerName}">
                 </div>
                 <div class="d-flex justify-content-end gap-2">
                     <a th:href="@{/races}" class="btn btn-outline-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-primary">Crear carrera</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
         </div>
