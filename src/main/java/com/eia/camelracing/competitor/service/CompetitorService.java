@@ -1,6 +1,8 @@
 package com.eia.camelracing.competitor.service;
 
 import com.eia.camelracing.common.audit.AuditPublisher;
+import com.eia.camelracing.common.exception.BusinessRuleException;
+import com.eia.camelracing.common.exception.ResourceNotFoundException;
 import com.eia.camelracing.competitor.dto.CompetitorRequest;
 import com.eia.camelracing.competitor.dto.CompetitorResponse;
 import com.eia.camelracing.competitor.entity.Competitor;
@@ -16,7 +18,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
@@ -24,15 +25,14 @@ import java.util.UUID;
 public class CompetitorService {
 
     private final ICompetitorRepository repository;
-    // Agregado en la Etapa 5: para validar que no tenga resultados oficiales antes de borrar.
+    // Se consulta antes de un borrado físico: un competidor con historial oficial debe retirarse, no eliminarse.
     private final IRaceResultRepository resultRepository;
-    // Agregado en la Etapa 7: para publicar eventos de auditoría.
     private final AuditPublisher auditPublisher;
 
     @Transactional
     public CompetitorResponse create(CompetitorRequest request) {
         if (repository.existsByNicknameIgnoreCase(request.nickname())) {
-            throw new IllegalStateException(
+            throw new BusinessRuleException(
                     "Ya existe un competidor con el nickname '" + request.nickname() + "'");
         }
         Competitor saved = repository.save(CompetitorMapper.toEntity(request));
@@ -55,17 +55,17 @@ public class CompetitorService {
     public CompetitorResponse findById(UUID id) {
         return repository.findById(id)
                 .map(CompetitorMapper::toResponse)
-                .orElseThrow(() -> new NoSuchElementException("Competidor " + id + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Competidor " + id + " no encontrado"));
     }
 
     @Transactional
     public CompetitorResponse update(UUID id, CompetitorRequest request) {
         Competitor existing = repository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Competidor " + id + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Competidor " + id + " no encontrado"));
 
         if (!existing.getNickname().equalsIgnoreCase(request.nickname())
                 && repository.existsByNicknameIgnoreCase(request.nickname())) {
-            throw new IllegalStateException(
+            throw new BusinessRuleException(
                     "Ya existe un competidor con el nickname '" + request.nickname() + "'");
         }
 
@@ -88,11 +88,10 @@ public class CompetitorService {
     @Transactional
     public CompetitorResponse changeStatus(UUID id, CompetitorStatus newStatus) {
         Competitor existing = repository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Competidor " + id + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Competidor " + id + " no encontrado"));
 
-        // Se guarda el estado ANTERIOR antes de sobreescribirlo, porque una vez
-        // que se llama a setStatus(newStatus), el valor viejo se pierde
-        // (Java no guarda copias automáticas de los valores anteriores).
+        // Se captura el estado previo antes de sobrescribirlo para dejarlo
+        // registrado en el log de auditoría junto con el nuevo valor.
         CompetitorStatus previousStatus = existing.getStatus();
         existing.setStatus(newStatus);
         Competitor saved = repository.save(existing);
@@ -107,12 +106,13 @@ public class CompetitorService {
     @Transactional
     public void delete(UUID id) {
         Competitor existing = repository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Competidor " + id + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Competidor " + id + " no encontrado"));
 
-        // Regla (Módulo 2): "A competitor with official results cannot be
-        // physically deleted; it must be retired or deactivated."
+        // Un competidor con historial de carreras no se borra físicamente:
+        // se pierde la trazabilidad de resultados pasados. Se redirige al
+        // llamador hacia el endpoint de cambio de estado (retiro).
         if (resultRepository.existsByRegistration_Competitor_Id(id)) {
-            throw new IllegalStateException(
+            throw new BusinessRuleException(
                     "Este competidor tiene resultados oficiales registrados; no se puede eliminar. "
                             + "Usa PATCH /api/competitors/" + id + "/status?status=RETIRED en su lugar");
         }

@@ -3,8 +3,8 @@ package com.eia.camelracing.result.entity;
 import java.util.Map;
 
 /**
- * Tabla de puntos según la posición final, tal como la define la guía.
- * Solo aplica cuando el status es FINISHED; cualquier otro status vale 0.
+ * Escala de puntos de la liga según la posición final. Solo aplica cuando
+ * el resultado es FINISHED; cualquier otro estado (DNF, DSQ, DNS) vale 0.
  */
 public class ResultPoints {
 
@@ -20,7 +20,7 @@ public class ResultPoints {
 
     public static int pointsFor(ResultStatus status, Integer position) {
         if (status != ResultStatus.FINISHED || position == null) {
-            return 0; // DNF y DSQ siempre valen 0, como pide la guía
+            return 0; // DNF y DSQ siempre valen 0 puntos
         }
         return POINTS_BY_POSITION.getOrDefault(position, 0); // 6to lugar en adelante: 0
     }

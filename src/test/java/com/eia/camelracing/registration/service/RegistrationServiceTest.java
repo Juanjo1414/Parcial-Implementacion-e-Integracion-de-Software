@@ -1,6 +1,8 @@
 package com.eia.camelracing.registration.service;
 
 import com.eia.camelracing.common.audit.AuditPublisher;
+import com.eia.camelracing.common.exception.BusinessRuleException;
+import com.eia.camelracing.common.exception.InvalidStateTransitionException;
 import com.eia.camelracing.competitor.entity.Competitor;
 import com.eia.camelracing.competitor.entity.CompetitorStatus;
 import com.eia.camelracing.competitor.entity.CompetitorType;
@@ -97,7 +99,7 @@ class RegistrationServiceTest {
         when(competitorRepository.findById(competitorId)).thenReturn(Optional.of(comp));
 
         assertThatThrownBy(() -> service.register(raceId, new RegistrationRequest(competitorId, null, null)))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(InvalidStateTransitionException.class)
                 .hasMessageContaining("ACTIVO");
     }
 
@@ -114,7 +116,7 @@ class RegistrationServiceTest {
         when(registrationRepository.existsByRaceIdAndCompetitorId(raceId, competitorId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.register(raceId, new RegistrationRequest(competitorId, null, null)))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("ya está inscrito");
     }
 
@@ -129,7 +131,7 @@ class RegistrationServiceTest {
         when(raceRepository.findById(raceId)).thenReturn(Optional.of(race));
 
         assertThatThrownBy(() -> service.register(raceId, new RegistrationRequest(competitorId, null, null)))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(InvalidStateTransitionException.class)
                 .hasMessageContaining("ya pasó");
     }
 }

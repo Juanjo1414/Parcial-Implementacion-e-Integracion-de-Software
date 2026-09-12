@@ -1,6 +1,7 @@
 package com.eia.camelracing.result.service;
 
 import com.eia.camelracing.common.audit.AuditPublisher;
+import com.eia.camelracing.common.exception.BusinessRuleException;
 import com.eia.camelracing.competitor.entity.Competitor;
 import com.eia.camelracing.competitor.entity.CompetitorStatus;
 import com.eia.camelracing.competitor.entity.CompetitorType;
@@ -93,7 +94,7 @@ class ResultServiceTest {
 
         assertThatThrownBy(() -> service.record(raceId, new ResultRequest(
                 registrationId, 1, 250.0, 0.0, ResultStatus.FINISHED, "Segundo ganador (inválido)")))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("ya fue registrada");
     }
 }

@@ -39,7 +39,7 @@ public class RaceResult {
 
     private String notes;
 
-    // Placeholder hasta la Etapa 6, igual que en Registration.
+    // Nombre del usuario autenticado que registró el resultado, para trazabilidad.
     private String recordedBy;
 
     @Column(nullable = false, updatable = false)

@@ -1,6 +1,8 @@
 package com.eia.camelracing.race.service;
 
 import com.eia.camelracing.common.audit.AuditPublisher;
+import com.eia.camelracing.common.exception.InvalidStateTransitionException;
+import com.eia.camelracing.common.exception.ResourceNotFoundException;
 import com.eia.camelracing.race.dto.RaceRequest;
 import com.eia.camelracing.race.dto.RaceResponse;
 import com.eia.camelracing.race.entity.Race;
@@ -17,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
@@ -25,10 +26,11 @@ import java.util.UUID;
 public class RaceService {
 
     private final IRaceRepository repository;
-    // Agregados en la Etapa 5 para completar las reglas de transición de estado.
+    // Se consultan para validar las reglas de la máquina de estados: cuántas
+    // inscripciones aprobadas hay antes de iniciar y si ya existen resultados
+    // antes de marcar la carrera como completada.
     private final IRaceRegistrationRepository registrationRepository;
     private final IRaceResultRepository resultRepository;
-    // Agregado en la Etapa 7.
     private final AuditPublisher auditPublisher;
 
     @Transactional
@@ -57,7 +59,7 @@ public class RaceService {
         Race existing = getOrThrow(id);
 
         if (existing.getStatus() == RaceStatus.COMPLETED || existing.getStatus() == RaceStatus.CANCELLED) {
-            throw new IllegalStateException(
+            throw new InvalidStateTransitionException(
                     "No se puede editar una carrera en estado " + existing.getStatus());
         }
 
@@ -86,32 +88,34 @@ public class RaceService {
         Race existing = getOrThrow(id);
 
         if (!RaceStatusTransitions.isValid(existing.getStatus(), newStatus)) {
-            throw new IllegalStateException(
+            throw new InvalidStateTransitionException(
                     "No se puede pasar la carrera de " + existing.getStatus() + " a " + newStatus);
         }
 
-        // Regla (Módulo 4): "At least two valid participants are required to start."
+        // Una grilla de una sola persona no es una carrera: se exige un
+        // mínimo de dos inscripciones aprobadas antes de poder arrancar.
         if (newStatus == RaceStatus.IN_PROGRESS) {
             long approvedCount = registrationRepository.findByRaceId(id).stream()
                     .filter(r -> r.getStatus() == RegistrationStatus.APPROVED)
                     .count();
             if (approvedCount < 2) {
-                throw new IllegalStateException(
+                throw new InvalidStateTransitionException(
                         "Se necesitan al menos 2 inscripciones APROBADAS para iniciar la carrera (hay "
                                 + approvedCount + ")");
             }
         }
 
-        // Regla (Módulo 4): "A race cannot be completed without official results."
+        // Una carrera no queda oficialmente cerrada mientras no tenga al
+        // menos un resultado cargado.
         if (newStatus == RaceStatus.COMPLETED) {
             boolean hasResults = !resultRepository.findByRegistration_Race_Id(id).isEmpty();
             if (!hasResults) {
-                throw new IllegalStateException("No se puede completar una carrera sin resultados registrados");
+                throw new InvalidStateTransitionException("No se puede completar una carrera sin resultados registrados");
             }
         }
 
-        // Se guarda el estado anterior ANTES de sobreescribirlo, para poder
-        // reportarlo correctamente en el log de auditoría.
+        // Se captura el estado previo antes de sobrescribirlo para dejarlo
+        // registrado en el log de auditoría junto con el nuevo valor.
         RaceStatus previousStatus = existing.getStatus();
         existing.setStatus(newStatus);
         Race saved = repository.save(existing);
@@ -133,13 +137,13 @@ public class RaceService {
 
     private void validateDeadlineBeforeStart(LocalDateTime deadline, LocalDateTime scheduledAt) {
         if (!deadline.isBefore(scheduledAt)) {
-            throw new IllegalStateException(
+            throw new InvalidStateTransitionException(
                     "La fecha límite de inscripción debe ser anterior a la fecha de la carrera");
         }
     }
 
     private Race getOrThrow(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Carrera " + id + " no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Carrera " + id + " no encontrada"));
     }
 }

@@ -6,17 +6,20 @@ import com.eia.camelracing.security.repository.IUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * CommandLineRunner: Spring Boot ejecuta automáticamente el método run()
- * una sola vez, justo después de que la aplicación termina de arrancar.
- * Perfecto para sembrar datos iniciales sin tener que hacerlo a mano.
+ * Crea las cuentas de acceso iniciales (una por rol) la primera vez que la
+ * aplicación arranca contra una base de datos vacía. Se ejecuta antes que
+ * {@code DemoDataSeeder} porque las carreras de demostración registran
+ * quién las organiza y quién carga resultados.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Order(1)
 public class DataSeeder implements CommandLineRunner {
 
     private final IUserRepository userRepository;

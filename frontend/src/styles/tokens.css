@@ -1,0 +1,60 @@
+:root {
+  /* Paleta "Vibrant Racing": rojo de competición + oro de campeón sobre un
+     panel de control oscuro, con suficiente contraste para texto (AA). */
+  --color-bg: #0b0f19;
+  --color-bg-elevated: #0f1523;
+  --color-surface: #141b2c;
+  --color-surface-alt: #1b2438;
+  --color-border: #262f45;
+  --color-border-strong: #37415c;
+
+  --color-text: #e7ebf5;
+  --color-text-muted: #92a0bd;
+  --color-text-faint: #5c6889;
+
+  --color-primary: #e11d2e;
+  --color-primary-hover: #ff3346;
+  --color-primary-soft: rgba(225, 29, 46, 0.16);
+
+  --color-accent: #f5b914;
+  --color-accent-soft: rgba(245, 185, 20, 0.16);
+
+  --color-success: #22c55e;
+  --color-success-soft: rgba(34, 197, 94, 0.16);
+  --color-warning: #f59e0b;
+  --color-warning-soft: rgba(245, 158, 11, 0.16);
+  --color-danger: #ef4444;
+  --color-danger-soft: rgba(239, 68, 68, 0.16);
+  --color-info: #38bdf8;
+  --color-info-soft: rgba(56, 189, 248, 0.16);
+  --color-muted: #8b96ad;
+  --color-muted-soft: rgba(139, 150, 173, 0.16);
+
+  --font-display: "Bebas Neue", "Arial Narrow", sans-serif;
+  --font-body: "Source Sans 3", system-ui, -apple-system, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --sidebar-width: 248px;
+  --topbar-height: 64px;
+
+  --transition-fast: 150ms ease;
+  --transition-base: 220ms ease;
+
+  color-scheme: dark;
+}

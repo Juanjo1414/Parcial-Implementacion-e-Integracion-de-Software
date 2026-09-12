@@ -11,10 +11,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Implementa UserDetails directamente: así Spring Security puede usar esta
- * misma entidad como el "usuario autenticado" sin necesitar una clase
- * intermedia. Es la forma más directa de integrarse (la usa también el
- * repo del profesor).
+ * Implementa UserDetails directamente para que Spring Security pueda usar
+ * esta misma entidad como el "usuario autenticado", sin necesitar una clase
+ * adaptadora intermedia.
  */
 @Entity
 @Table(name = "users")
@@ -32,8 +31,8 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String username;
 
-    // Este campo NUNCA debe salir en un DTO de respuesta -> por eso Etapa 1
-    // ya nos acostumbró a usar DTOs y nunca exponer la entidad directamente.
+    // El hash nunca debe salir en una respuesta: los DTOs de la API jamás
+    // exponen esta entidad directamente.
     @Column(nullable = false)
     private String password;
 

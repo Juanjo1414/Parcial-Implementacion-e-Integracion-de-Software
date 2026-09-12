@@ -1,6 +1,7 @@
 package com.eia.camelracing.competitor.service;
 
 import com.eia.camelracing.common.audit.AuditPublisher;
+import com.eia.camelracing.common.exception.BusinessRuleException;
 import com.eia.camelracing.competitor.dto.CompetitorRequest;
 import com.eia.camelracing.competitor.dto.CompetitorResponse;
 import com.eia.camelracing.competitor.entity.Competitor;
@@ -88,7 +89,7 @@ class CompetitorServiceTest {
         // assertThatThrownBy: verifica que se lanzó la excepción esperada
         // Y que su mensaje contiene el texto que esperamos.
         assertThatThrownBy(() -> service.create(request))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("byte");
 
         // never(): confirma que save() NO se llamó, porque el error debe

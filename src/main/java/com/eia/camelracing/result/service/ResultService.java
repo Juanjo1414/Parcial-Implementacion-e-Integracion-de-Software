@@ -1,6 +1,9 @@
 package com.eia.camelracing.result.service;
 
 import com.eia.camelracing.common.audit.AuditPublisher;
+import com.eia.camelracing.common.exception.BusinessRuleException;
+import com.eia.camelracing.common.exception.InvalidStateTransitionException;
+import com.eia.camelracing.common.exception.ResourceNotFoundException;
 import com.eia.camelracing.competitor.entity.Competitor;
 import com.eia.camelracing.competitor.repository.ICompetitorRepository;
 import com.eia.camelracing.race.entity.RaceStatus;
@@ -21,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
@@ -32,31 +34,30 @@ public class ResultService {
     private final IRaceRegistrationRepository registrationRepository;
     private final ICompetitorRepository competitorRepository;
     private final ITeamRepository teamRepository;
-    // Agregado en la Etapa 7.
     private final AuditPublisher auditPublisher;
 
     @Transactional
     public ResultResponse record(UUID raceId, ResultRequest request) {
         RaceRegistration registration = registrationRepository.findById(request.registrationId())
-                .orElseThrow(() -> new NoSuchElementException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Inscripción " + request.registrationId() + " no encontrada"));
 
         if (!registration.getRace().getId().equals(raceId)) {
-            throw new IllegalStateException("Esa inscripción no pertenece a la carrera indicada");
+            throw new BusinessRuleException("Esa inscripción no pertenece a la carrera indicada");
         }
 
         if (registration.getRace().getStatus() != RaceStatus.IN_PROGRESS) {
-            throw new IllegalStateException(
+            throw new InvalidStateTransitionException(
                     "Solo se pueden registrar resultados en carreras EN_PROGRESO (estado actual: "
                             + registration.getRace().getStatus() + ")");
         }
 
         if (registration.getStatus() != RegistrationStatus.APPROVED) {
-            throw new IllegalStateException("Solo se pueden registrar resultados de inscripciones APROBADAS");
+            throw new InvalidStateTransitionException("Solo se pueden registrar resultados de inscripciones APROBADAS");
         }
 
         if (resultRepository.existsByRegistration_Id(registration.getId())) {
-            throw new IllegalStateException("Esta inscripción ya tiene un resultado registrado (usa PUT para editarlo)");
+            throw new BusinessRuleException("Esta inscripción ya tiene un resultado registrado (usa PUT para editarlo)");
         }
 
         validateResultData(raceId, request, null);
@@ -83,7 +84,7 @@ public class ResultService {
     @Transactional
     public ResultResponse update(UUID resultId, ResultRequest request) {
         RaceResult existing = resultRepository.findById(resultId)
-                .orElseThrow(() -> new NoSuchElementException("Resultado " + resultId + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Resultado " + resultId + " no encontrado"));
 
         UUID raceId = existing.getRegistration().getRace().getId();
         validateResultData(raceId, request, resultId);
@@ -114,26 +115,26 @@ public class ResultService {
     @Transactional(readOnly = true)
     public ResultResponse findById(UUID id) {
         return ResultMapper.toResponse(resultRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Resultado " + id + " no encontrado")));
+                .orElseThrow(() -> new ResourceNotFoundException("Resultado " + id + " no encontrado")));
     }
 
     private void validateResultData(UUID raceId, ResultRequest request, UUID excludeResultId) {
         if (request.status() == ResultStatus.FINISHED) {
             if (request.completionTimeSeconds() == null || request.completionTimeSeconds() <= 0) {
-                throw new IllegalStateException("El tiempo de finalización debe ser positivo para un resultado FINISHED");
+                throw new InvalidStateTransitionException("El tiempo de finalización debe ser positivo para un resultado FINISHED");
             }
             if (request.finalPosition() == null || request.finalPosition() <= 0) {
-                throw new IllegalStateException("Un resultado FINISHED debe tener una posición final válida");
+                throw new InvalidStateTransitionException("Un resultado FINISHED debe tener una posición final válida");
             }
             boolean positionTaken = resultRepository.existsByRegistration_Race_IdAndFinalPosition(
                     raceId, request.finalPosition());
             if (positionTaken && excludeResultId == null) {
-                throw new IllegalStateException(
+                throw new BusinessRuleException(
                         "La posición " + request.finalPosition() + " ya fue registrada en esta carrera");
             }
         } else {
             if (request.finalPosition() != null) {
-                throw new IllegalStateException(
+                throw new InvalidStateTransitionException(
                         "Un resultado con estado " + request.status() + " no debe tener posición final");
             }
         }

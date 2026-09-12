@@ -11,12 +11,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
-// AHORA: "annotations = RestController.class" limita este manejador para
-// que SOLO aplique a clases anotadas @RestController (la API), dejando
-// que los @Controller de las vistas Thymeleaf sigan su propio camino.
-@RestControllerAdvice(annotations = org.springframework.web.bind.annotation.RestController.class)
+/**
+ * Traduce cualquier excepción lanzada por los controladores REST a la
+ * respuesta JSON uniforme que exige la API, sin dejar escapar nunca un
+ * stack trace hacia el cliente.
+ */
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -32,16 +33,22 @@ public class GlobalExceptionHandler {
                 errors));
     }
 
-    @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(NoSuchElementException ex) {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(
                 ex.getMessage(), HttpStatus.NOT_FOUND.value(), LocalDateTime.now()));
     }
 
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponse> handleConflict(IllegalStateException ex) {
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(BusinessRuleException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(
                 ex.getMessage(), HttpStatus.CONFLICT.value(), LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(InvalidStateTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidState(InvalidStateTransitionException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(
+                ex.getMessage(), HttpStatus.BAD_REQUEST.value(), LocalDateTime.now()));
     }
 
     // 401: credenciales incorrectas al hacer login (usuario/contraseña inválidos).

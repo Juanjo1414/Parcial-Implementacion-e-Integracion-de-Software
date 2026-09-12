@@ -17,8 +17,8 @@ public class AuditController {
 
     private final IAuditLogRepository repository;
 
-    // Regla explícita de la guía: "Only administrators may view the
-    // complete audit log."
+    // El historial de auditoría expone datos de todos los usuarios y
+    // entidades del sistema, así que se restringe a administradores.
     @GetMapping("/api/audit")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<AuditLogResponse>> findAll(Pageable pageable) {

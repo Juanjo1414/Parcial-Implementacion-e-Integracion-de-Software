@@ -1,6 +1,9 @@
 package com.eia.camelracing.registration.service;
 
 import com.eia.camelracing.common.audit.AuditPublisher;
+import com.eia.camelracing.common.exception.BusinessRuleException;
+import com.eia.camelracing.common.exception.InvalidStateTransitionException;
+import com.eia.camelracing.common.exception.ResourceNotFoundException;
 import com.eia.camelracing.competitor.entity.Competitor;
 import com.eia.camelracing.competitor.entity.CompetitorStatus;
 import com.eia.camelracing.competitor.repository.ICompetitorRepository;
@@ -24,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
@@ -35,26 +37,25 @@ public class RegistrationService {
     private final IRaceRepository raceRepository;
     private final ICompetitorRepository competitorRepository;
     private final ITeamRepository teamRepository;
-    // Agregado en la Etapa 7.
     private final AuditPublisher auditPublisher;
 
     @Transactional
     public RegistrationResponse register(UUID raceId, RegistrationRequest request) {
         Race race = raceRepository.findById(raceId)
-                .orElseThrow(() -> new NoSuchElementException("Carrera " + raceId + " no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Carrera " + raceId + " no encontrada"));
 
         if (race.getStatus() != RaceStatus.OPEN_FOR_REGISTRATION) {
-            throw new IllegalStateException(
+            throw new InvalidStateTransitionException(
                     "La carrera no está abierta para inscripciones (estado actual: " + race.getStatus() + ")");
         }
         if (LocalDateTime.now().isAfter(race.getRegistrationDeadline())) {
-            throw new IllegalStateException("La fecha límite de inscripción ya pasó");
+            throw new InvalidStateTransitionException("La fecha límite de inscripción ya pasó");
         }
 
         boolean hasCompetitor = request.competitorId() != null;
         boolean hasTeam = request.teamId() != null;
         if (hasCompetitor == hasTeam) {
-            throw new IllegalStateException("Debes indicar exactamente un competitor o un team, no ambos ni ninguno");
+            throw new BusinessRuleException("Debes indicar exactamente un competitor o un team, no ambos ni ninguno");
         }
 
         RaceRegistration registration = hasCompetitor
@@ -74,23 +75,23 @@ public class RegistrationService {
 
     private RaceRegistration registerCompetitor(Race race, RegistrationRequest request) {
         if (race.getType() == RaceType.TEAM) {
-            throw new IllegalStateException("Esta carrera es solo de equipos, no admite competidores individuales");
+            throw new BusinessRuleException("Esta carrera es solo de equipos, no admite competidores individuales");
         }
 
         Competitor competitor = competitorRepository.findById(request.competitorId())
-                .orElseThrow(() -> new NoSuchElementException("Competidor " + request.competitorId() + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Competidor " + request.competitorId() + " no encontrado"));
 
         if (competitor.getStatus() != CompetitorStatus.ACTIVE) {
-            throw new IllegalStateException("El competidor '" + competitor.getNickname() + "' no está ACTIVO");
+            throw new InvalidStateTransitionException("El competidor '" + competitor.getNickname() + "' no está ACTIVO");
         }
 
         if (registrationRepository.existsByRaceIdAndCompetitorId(race.getId(), competitor.getId())) {
-            throw new IllegalStateException("El competidor ya está inscrito en esta carrera");
+            throw new BusinessRuleException("El competidor ya está inscrito en esta carrera");
         }
 
         if (competitor.getTeam() != null
                 && registrationRepository.existsByRaceIdAndTeamId(race.getId(), competitor.getTeam().getId())) {
-            throw new IllegalStateException(
+            throw new BusinessRuleException(
                     "El competidor ya participa en esta carrera como miembro de su equipo");
         }
 
@@ -102,27 +103,27 @@ public class RegistrationService {
 
     private RaceRegistration registerTeam(Race race, RegistrationRequest request) {
         if (race.getType() == RaceType.INDIVIDUAL) {
-            throw new IllegalStateException("Esta carrera es solo individual, no admite equipos");
+            throw new BusinessRuleException("Esta carrera es solo individual, no admite equipos");
         }
 
         Team team = teamRepository.findById(request.teamId())
-                .orElseThrow(() -> new NoSuchElementException("Equipo " + request.teamId() + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Equipo " + request.teamId() + " no encontrado"));
 
         if (team.getStatus() != TeamStatus.ACTIVE) {
-            throw new IllegalStateException("El equipo '" + team.getName() + "' no está activo");
+            throw new InvalidStateTransitionException("El equipo '" + team.getName() + "' no está activo");
         }
         if (team.getMembers().isEmpty()) {
-            throw new IllegalStateException("El equipo no tiene miembros, no puede inscribirse");
+            throw new BusinessRuleException("El equipo no tiene miembros, no puede inscribirse");
         }
 
         if (registrationRepository.existsByRaceIdAndTeamId(race.getId(), team.getId())) {
-            throw new IllegalStateException("El equipo ya está inscrito en esta carrera");
+            throw new BusinessRuleException("El equipo ya está inscrito en esta carrera");
         }
 
         boolean anyMemberAlreadyIndividual = team.getMembers().stream()
                 .anyMatch(member -> registrationRepository.existsByRaceIdAndCompetitorId(race.getId(), member.getId()));
         if (anyMemberAlreadyIndividual) {
-            throw new IllegalStateException(
+            throw new BusinessRuleException(
                     "Uno de los miembros del equipo ya está inscrito individualmente en esta carrera");
         }
 
@@ -138,7 +139,7 @@ public class RegistrationService {
             return (int) count + 1;
         }
         if (registrationRepository.existsByRaceIdAndStartingPosition(raceId, requested)) {
-            throw new IllegalStateException("La posición de salida " + requested + " ya está ocupada en esta carrera");
+            throw new BusinessRuleException("La posición de salida " + requested + " ya está ocupada en esta carrera");
         }
         return requested;
     }
@@ -158,7 +159,7 @@ public class RegistrationService {
     public RegistrationResponse approve(UUID id) {
         RaceRegistration registration = getOrThrow(id);
         if (registration.getStatus() != RegistrationStatus.PENDING) {
-            throw new IllegalStateException("Solo se pueden aprobar inscripciones en estado PENDING");
+            throw new InvalidStateTransitionException("Solo se pueden aprobar inscripciones en estado PENDING");
         }
         registration.setStatus(RegistrationStatus.APPROVED);
         RaceRegistration saved = registrationRepository.save(registration);
@@ -171,11 +172,11 @@ public class RegistrationService {
     @Transactional
     public RegistrationResponse reject(UUID id, String reason) {
         if (reason == null || reason.isBlank()) {
-            throw new IllegalStateException("Debes indicar un motivo de rechazo");
+            throw new BusinessRuleException("Debes indicar un motivo de rechazo");
         }
         RaceRegistration registration = getOrThrow(id);
         if (registration.getStatus() != RegistrationStatus.PENDING) {
-            throw new IllegalStateException("Solo se pueden rechazar inscripciones en estado PENDING");
+            throw new InvalidStateTransitionException("Solo se pueden rechazar inscripciones en estado PENDING");
         }
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setValidationNotes(reason);
@@ -196,7 +197,7 @@ public class RegistrationService {
 
     private RaceRegistration getOrThrow(UUID id) {
         return registrationRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Inscripción " + id + " no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Inscripción " + id + " no encontrada"));
     }
 
     private String currentUsername() {

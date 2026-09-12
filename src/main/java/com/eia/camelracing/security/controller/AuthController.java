@@ -1,6 +1,8 @@
 package com.eia.camelracing.security.controller;
 
 import com.eia.camelracing.common.audit.AuditPublisher;
+import com.eia.camelracing.common.exception.BusinessRuleException;
+import com.eia.camelracing.common.exception.ResourceNotFoundException;
 import com.eia.camelracing.security.dto.AuthResponse;
 import com.eia.camelracing.security.dto.LoginRequest;
 import com.eia.camelracing.security.dto.RegisterRequest;
@@ -27,15 +29,12 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
-    // Campo nuevo de la Etapa 7: @RequiredArgsConstructor de Lombok genera
-    // automáticamente el constructor con este campo agregado, no hace falta
-    // escribirlo a mano.
     private final AuditPublisher auditPublisher;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByUsername(request.username())) {
-            throw new IllegalStateException("El username '" + request.username() + "' ya está en uso");
+            throw new BusinessRuleException("El username '" + request.username() + "' ya está en uso");
         }
 
         User user = User.builder()
@@ -58,7 +57,8 @@ public class AuthController {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password()));
 
-        User user = userRepository.findByUsername(request.username()).orElseThrow();
+        User user = userRepository.findByUsername(request.username())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario '" + request.username() + "' no encontrado"));
 
         auditPublisher.publish("LOGIN", "User", null, "Login exitoso: " + request.username());
 

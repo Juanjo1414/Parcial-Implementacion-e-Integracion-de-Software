@@ -23,7 +23,7 @@ public class CompetitorController {
 
     private final CompetitorService service;
 
-    // Escritura: solo ADMIN puede gestionar competidores (tabla de roles, Módulo 1).
+    // Solo administradores dan de alta competidores.
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CompetitorResponse> create(@Valid @RequestBody CompetitorRequest request) {
@@ -31,8 +31,7 @@ public class CompetitorController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    // Lectura: sin @PreAuthorize -> cualquier usuario autenticado (ADMIN,
-    // ORGANIZER o VIEWER) puede consultar, tal como dice la guía.
+    // Sin @PreAuthorize: cualquier usuario autenticado puede consultar el listado.
     @GetMapping
     public ResponseEntity<Page<CompetitorResponse>> findAll(
             @RequestParam(required = false) String name,

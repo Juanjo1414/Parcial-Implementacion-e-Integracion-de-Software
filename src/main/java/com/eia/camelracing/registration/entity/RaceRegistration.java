@@ -49,9 +49,7 @@ public class RaceRegistration {
 
     private String validationNotes;
 
-    // Placeholder hasta la Etapa 6 (seguridad): por ahora guardamos un
-    // nombre libre; cuando exista autenticación real, este campo se
-    // llenará automáticamente con el usuario autenticado.
+    // Nombre del usuario autenticado que creó la inscripción, para trazabilidad.
     private String performedBy;
 
     @PrePersist

@@ -47,6 +47,18 @@ services:
     networks:
       - camelracing_network
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: camelracing-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - app
+    networks:
+      - camelracing_network
+
 networks:
   camelracing_network:
     driver: bridge

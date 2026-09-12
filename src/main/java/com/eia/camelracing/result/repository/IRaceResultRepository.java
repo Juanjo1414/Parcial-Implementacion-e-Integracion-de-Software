@@ -17,8 +17,8 @@ public interface IRaceResultRepository extends JpaRepository<RaceResult, UUID> {
 
     boolean existsByRegistration_Id(UUID registrationId);
 
-    // Usados en la Etapa 5 para completar la regla pendiente de borrado
-    // en Competitor y Team (ver más abajo).
+    // Permiten bloquear el borrado físico de un competidor o equipo que ya
+    // tiene resultados oficiales registrados.
     boolean existsByRegistration_Competitor_Id(UUID competitorId);
 
     boolean existsByRegistration_Team_Id(UUID teamId);

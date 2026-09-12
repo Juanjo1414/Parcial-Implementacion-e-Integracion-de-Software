@@ -1,5 +1,8 @@
 package com.eia.camelracing.team.service;
 
+import com.eia.camelracing.common.exception.BusinessRuleException;
+import com.eia.camelracing.common.exception.InvalidStateTransitionException;
+import com.eia.camelracing.common.exception.ResourceNotFoundException;
 import com.eia.camelracing.competitor.entity.Competitor;
 import com.eia.camelracing.competitor.repository.ICompetitorRepository;
 import com.eia.camelracing.result.repository.IRaceResultRepository;
@@ -14,27 +17,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class TeamService {
 
-    // Necesitamos el repository de Competitor también, porque aquí es donde
-    // agregamos/quitamos miembros de un equipo.
+    // Se necesita también el repositorio de Competitor porque aquí es donde
+    // se agregan y quitan miembros de un equipo.
     private final ITeamRepository teamRepository;
     private final ICompetitorRepository competitorRepository;
+    private final IRaceResultRepository resultRepository;
 
-    // Regla: "The maximum number of members must be configurable."
-    // La dejamos como constante simple por ahora; se puede mover a
-    // application.yml más adelante si quieres hacerla configurable de verdad.
+    // Cupo máximo por equipo. Se deja como constante porque ningún módulo
+    // requiere hoy configurarlo por equipo o en tiempo de ejecución.
     private static final int MAX_MEMBERS = 6;
 
     @Transactional
     public TeamResponse create(TeamRequest request) {
         if (teamRepository.existsByNameIgnoreCase(request.name())) {
-            throw new IllegalStateException("Ya existe un equipo con el nombre '" + request.name() + "'");
+            throw new BusinessRuleException("Ya existe un equipo con el nombre '" + request.name() + "'");
         }
         Team saved = teamRepository.save(TeamMapper.toEntity(request));
         return TeamMapper.toResponse(saved);
@@ -49,7 +51,7 @@ public class TeamService {
     public TeamResponse findById(UUID id) {
         return teamRepository.findById(id)
                 .map(TeamMapper::toResponse)
-                .orElseThrow(() -> new NoSuchElementException("Equipo " + id + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Equipo " + id + " no encontrado"));
     }
 
     @Transactional
@@ -61,14 +63,12 @@ public class TeamService {
         return TeamMapper.toResponse(teamRepository.save(existing));
     }
 
-    private final IRaceResultRepository resultRepository;
-
     @Transactional
     public void delete(UUID id) {
         Team existing = getOrThrow(id);
 
         if (resultRepository.existsByRegistration_Team_Id(id)) {
-            throw new IllegalStateException(
+            throw new BusinessRuleException(
                     "Este equipo tiene resultados oficiales registrados; no se puede eliminar. "
                             + "Debe desactivarse en su lugar");
         }
@@ -81,23 +81,24 @@ public class TeamService {
         Team team = getOrThrow(teamId);
 
         if (team.getStatus() == TeamStatus.SUSPENDED) {
-            throw new IllegalStateException("No se pueden agregar miembros a un equipo suspendido");
+            throw new InvalidStateTransitionException("No se pueden agregar miembros a un equipo suspendido");
         }
 
         Competitor competitor = competitorRepository.findById(competitorId)
-                .orElseThrow(() -> new NoSuchElementException("Competidor " + competitorId + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Competidor " + competitorId + " no encontrado"));
 
         if (competitor.getTeam() != null) {
-            throw new IllegalStateException(
+            throw new BusinessRuleException(
                     "El competidor '" + competitor.getNickname() + "' ya pertenece a otro equipo");
         }
 
         if (team.getMembers().size() >= MAX_MEMBERS) {
-            throw new IllegalStateException("El equipo ya alcanzó el máximo de " + MAX_MEMBERS + " miembros");
+            throw new BusinessRuleException("El equipo ya alcanzó el máximo de " + MAX_MEMBERS + " miembros");
         }
 
-        // Un solo metodo que sincroniza ambos lados -> ya no hace falta
-        // volver a consultar la BD, la respuesta se arma con el objeto en memoria.
+        // addMember sincroniza ambos lados de la relación, así que la
+        // respuesta se puede construir con el objeto en memoria sin
+        // necesidad de volver a consultar la base de datos.
         team.addMember(competitor);
         competitorRepository.save(competitor);
 
@@ -108,10 +109,10 @@ public class TeamService {
     public TeamResponse removeMember(UUID teamId, UUID competitorId) {
         Team team = getOrThrow(teamId);
         Competitor competitor = competitorRepository.findById(competitorId)
-                .orElseThrow(() -> new NoSuchElementException("Competidor " + competitorId + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Competidor " + competitorId + " no encontrado"));
 
         if (competitor.getTeam() == null || !competitor.getTeam().getId().equals(teamId)) {
-            throw new IllegalStateException("Ese competidor no pertenece a este equipo");
+            throw new BusinessRuleException("Ese competidor no pertenece a este equipo");
         }
 
         team.removeMember(competitor);
@@ -122,6 +123,6 @@ public class TeamService {
 
     private Team getOrThrow(UUID id) {
         return teamRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Equipo " + id + " no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Equipo " + id + " no encontrado"));
     }
 }
