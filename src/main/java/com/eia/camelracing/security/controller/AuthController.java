@@ -18,6 +18,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,7 +32,13 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuditPublisher auditPublisher;
 
+    // @Transactional aquí es necesario, no solo buena práctica: AuditPublisher
+    // solo entrega el evento a AuditEventListener después de que la
+    // transacción que lo publicó confirma (AFTER_COMMIT); sin una
+    // transacción activa en este método, el registro de auditoría del login
+    // se descartaría en silencio.
     @PostMapping("/register")
+    @Transactional
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByUsername(request.username())) {
             throw new BusinessRuleException("El username '" + request.username() + "' ya está en uso");
@@ -44,7 +51,7 @@ public class AuthController {
                 .build();
         userRepository.save(user);
 
-        auditPublisher.publish("CREATE", "User", user.getId().toString(),
+        auditPublisher.publishAs(user.getUsername(), "CREATE", "User", user.getId().toString(),
                 "Nuevo usuario registrado: " + user.getUsername());
 
         String token = jwtService.generateToken(user);
@@ -53,6 +60,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Transactional
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.username(), request.password()));
@@ -60,7 +68,8 @@ public class AuthController {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario '" + request.username() + "' no encontrado"));
 
-        auditPublisher.publish("LOGIN", "User", null, "Login exitoso: " + request.username());
+        auditPublisher.publishAs(user.getUsername(), "LOGIN", "User", user.getId().toString(),
+                "Login exitoso: " + user.getUsername());
 
         String token = jwtService.generateToken(user);
         return ResponseEntity.ok(new AuthResponse(token, user.getUsername(), user.getRole().name()));

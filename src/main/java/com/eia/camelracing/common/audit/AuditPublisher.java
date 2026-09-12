@@ -11,6 +11,11 @@ import org.springframework.stereotype.Component;
  * auditable. Internamente solo publica un evento de Spring -> quien realmente
  * guarda el registro en la base de datos es AuditEventListener, en otro hilo
  * de responsabilidad completamente separado.
+ *
+ * Como el listener reacciona recién después del commit de la transacción
+ * (ver AuditEventListener), este método solo tiene efecto si se llama desde
+ * dentro de un método @Transactional; si no hay una transacción activa en
+ * el momento de publicar, Spring descarta el evento silenciosamente.
  */
 @Component
 @RequiredArgsConstructor
@@ -21,6 +26,13 @@ public class AuditPublisher {
     public void publish(String action, String entityType, String entityId, String description) {
         eventPublisher.publishEvent(
                 new AuditEvent(currentUsername(), action, entityType, entityId, description));
+    }
+
+    // Para el caso puntual del login: en ese momento SecurityContextHolder
+    // todavía no tiene al usuario autenticado (recién se está validando),
+    // así que el nombre de usuario se recibe explícito en vez de inferirlo.
+    public void publishAs(String username, String action, String entityType, String entityId, String description) {
+        eventPublisher.publishEvent(new AuditEvent(username, action, entityType, entityId, description));
     }
 
     public void publish(String action, String entityType, String entityId, String description,

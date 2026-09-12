@@ -19,6 +19,8 @@ bin/
 !**/src/test/**/bin/
 
 ### IntelliJ IDEA ###
+*.pdf
+CLAUDE.md
 .idea
 *.iws
 *.iml

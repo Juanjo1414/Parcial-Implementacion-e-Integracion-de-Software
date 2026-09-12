@@ -1,9 +1,11 @@
-# Perfil "dev": Postgres corriendo en tu propia máquina (localhost)
+# Perfil "dev": Postgres corriendo en tu propia máquina (localhost).
+# Usa variables de entorno para las credenciales -> nunca hardcodees aquí
+# una contraseña real, este archivo se versiona en git.
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/camelracing_db
-    username: postgres
-    password: juanjose1414
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -15,5 +17,5 @@ logging:
     org.hibernate.SQL: debug
 
 jwt:
-  secret: "una-clave-secreta-larga-de-al-menos-32-caracteres-para-firmar-tokens"
+  secret: ${JWT_SECRET:dev-only-secret-key-never-use-this-in-production-min-32-chars}
   expiration-ms: 3600000   # 1 hora, en milisegundos
