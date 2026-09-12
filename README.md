@@ -48,6 +48,8 @@ Mr. Abandonado, autoproclamado "Chief Executive Officer of Unnecessary Ideas", d
 | Integrante | Rol |
 | :--- | :--- |
 | Juan José Jaramillo | Desarrollo full-stack (backend, frontend, DevOps) |
+| Dylan Mejía | Seguridad — validaciones de seguridad del sistema |
+| Santiago Zuluaga | QA — pruebas funcionales de toda la aplicación |
 
 ## Arquitectura
 
